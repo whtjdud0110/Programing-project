@@ -16,6 +16,7 @@ typedef struct
 	int sleepMinutes;
 } Sleepdata;
 
+
 int validHour(int h) //시 검사
 {
 	return (h >= 0 && h <= 23);
@@ -46,22 +47,25 @@ void loadData() //데이터 불러오기
 	}
 
 	Sleepdata temp;
-	while (fscanf(fp, "%10[^,],%d:%d,%d:%d,%d\n", temp.date, &temp.startHour, &temp.startMin, &temp.endHour, &temp.endMin, &temp.sleepMinutes) == 6)
+	while (fscanf(fp, "%10[^,],%d:%d,%d:%d,%d", temp.date, &temp.startHour, &temp.startMin, &temp.endHour, &temp.endMin, &temp.sleepMinutes) == 6)
 	{
 		printf("불러온 데이터 : %s %02d:%02d ~ %02d:%02d (%d분)\n", temp.date, temp.startHour, temp.startMin, temp.endHour, temp.endMin, temp.sleepMinutes);
 		
 		if (recordCount < MAX_RECORDS)
 			records[recordCount++] = temp;
+
+		int c;
+		while ((c = fgetc(fp)) != '\n' && c != EOF);
 	}
 	fclose(fp); 
+	
 } 
-
 void saveData() //데이터 저장하기
 {
 	FILE* fp = fopen("sleep_data.csv", "w");
 	if (fp == NULL)
 	{
-		printf("파일 저장 실패!\n");
+		printf("파일 저장 실패!\n"); 
 		return;
 	}
 
@@ -70,19 +74,18 @@ void saveData() //데이터 저장하기
 		fprintf(fp, "%s,%02d:%02d,%02d:%02d,%d\n",
 			records[i].date,
 			records[i].startHour, records[i].startMin,
-			records[i].endHour, records[i].endMin,
-			records[i].sleepMinutes);
+			records[i].endHour, records[i].endMin, records[i].sleepMinutes);
 	}
 	fclose(fp);
 }
 
-int calcScore(int sleepMinutes)
-{
-	int diff = abs(sleepMinutes - dailyGoalMinutes);
-	int score = 100 - (diff / 30) * 10;
-	if (score < 0) score = 0;
+int calcScore(int sleepMinutes) {
+	int diff = abs(sleepMinutes - dailyGoalMinutes); 
+	int score = 100 - ((diff + 15) / 30) * 10; 
+	if (score < 0) score = 0; 
 	return score;
 }
+
 
 void alertIfNeeded(int sleepMinutes)
 {
@@ -156,23 +159,21 @@ void addRecord() //기록 추가
 	}
 
 	Sleepdata newRec;
-	printf("날짜 입력 (YYYY-MM-DD, 비워두면 오늘 자동 입력): ");
-	scanf("%10s", newRec.date);
 
-	if (!validDate(newRec.date))
-	{
-		time_t t = time(NULL);
-		struct tm tm = *localtime(&t);
-		sprintf(newRec.date, "%04d-%02d-%02d", tm.tm_year+1900, tm.tm_mon + 1, tm.tm_mday);
-	}
+	time_t t = time(NULL);
+	struct tm tm = *localtime(&t);
+	sprintf(newRec.date, "%04d-%02d-%02d",
+		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
 
-	do
+	printf("자동 날짜 입력됨: %s\n", newRec.date);
+
+	do //취침 시간 입력
 	{
 		printf("취침 시간 입력 (시 분): ");
 		scanf("%d %d", &newRec.startHour, &newRec.startMin);
 	} while (!validHour(newRec.startHour) || !validMinute(newRec.startMin));
 
-	do
+	do //기상 시간 입력
 	{
 		printf("기상 시간 입력 (시 분): ");
 		scanf("%d %d", &newRec.endHour, &newRec.endMin);
@@ -230,10 +231,11 @@ void showStats()
 
 int main()
 {	
+
 	printf("하루 목표 수면시간 입력(시간): ");
 	double goalHour;
 	scanf("%lf", &goalHour);
-	dailyGoalMinutes = (int)(goalHour) * 60;
+	dailyGoalMinutes = (int)(goalHour * 60 + 0.5);
 
 	loadData(); //기존 데이터 불러오기
 
@@ -252,7 +254,7 @@ int main()
 		case 2:
 			addRecord();
 			break;
-		case 3:
+		case  3:
 			showStats();
 			break;
 		case 4:
